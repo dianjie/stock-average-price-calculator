@@ -11,6 +11,7 @@ const CSV_HEADERS = [
   '交易方向',
   '价格',
   '数量',
+  '金额',
   '手续费',
   '总金额',
   '标签',
@@ -23,7 +24,7 @@ function stockToCsvRows(stocks: StockItem[]): string[][] {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     )
     if (sortedTxs.length === 0) {
-      rows.push([stock.code, stock.name, stock.type, '', '', '', '', '', '', ''])
+      rows.push([stock.code, stock.name, stock.type, '', '', '', '', '', '', '', ''])
     } else {
       for (const tx of sortedTxs) {
         rows.push([
@@ -34,6 +35,7 @@ function stockToCsvRows(stocks: StockItem[]): string[][] {
           tx.type,
           String(tx.price),
           String(tx.quantity),
+          String(tx.amount ?? tx.price * tx.quantity),
           String(tx.fee ?? 0),
           String(tx.totalAmount ?? 0),
           tx.tags?.join(';') || '',
@@ -173,6 +175,7 @@ function parseCsvToStocks(csvText: string): StockItem[] {
   const dirIdx = header.findIndex((h) => h.includes('方向') || h === 'type')
   const priceIdx = header.findIndex((h) => h.includes('价格') || h === 'price')
   const qtyIdx = header.findIndex((h) => h.includes('数量') || h === 'quantity')
+  const amountIdx = header.findIndex((h) => h === '金额' || h === 'amount')
   const feeIdx = header.findIndex((h) => h.includes('手续费') || h === 'fee')
   const totalIdx = header.findIndex((h) => h.includes('总金额') || h === 'totalAmount')
   const tagIdx = header.findIndex((h) => h.includes('标签') || h === 'tag')
@@ -212,6 +215,7 @@ function parseCsvToStocks(csvText: string): StockItem[] {
       type: txDirection,
       price,
       quantity,
+      amount: amountIdx >= 0 ? parseFloat(row[amountIdx]) || price * quantity : price * quantity,
       fee: feeIdx >= 0 ? parseFloat(row[feeIdx]) || 0 : 0,
       totalAmount: totalIdx >= 0 ? parseFloat(row[totalIdx]) || 0 : 0,
       tags:

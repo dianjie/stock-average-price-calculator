@@ -41,6 +41,7 @@ withDefaults(
     confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
   }>(),
   {
+    description: '',
     confirmText: '确定',
     cancelText: '取消',
     confirmVariant: 'default',

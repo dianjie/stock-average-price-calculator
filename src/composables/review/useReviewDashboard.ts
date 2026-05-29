@@ -35,6 +35,8 @@ export interface StepPoint {
   action: '买入' | '卖出'
   totalQuantity: number
   averageCost: number
+  // 原始交易对象
+  originalTx?: Transaction
 }
 
 // ==================== Composable 主逻辑 ====================
@@ -79,6 +81,7 @@ export function useReviewDashboard(selectedStock: Ref<StockItem>) {
         action: tx.type,
         totalQuantity: totalQty,
         averageCost: totalQty > 0 ? totalCost / totalQty : 0,
+        originalTx: tx,
       })
 
       // --- 逻辑 B: 按天聚合 ---
@@ -166,14 +169,14 @@ export function useReviewDashboard(selectedStock: Ref<StockItem>) {
   const stepData = computed(() => dailyAggregatedData.value.steps)
 
   const allTransactions = computed(() => {
-    if (!selectedStock.value) return []
+    const stock = selectedStock.value
+    if (!stock) return []
+
     return stepData.value.map((step) => ({
-      ...selectedStock.value!.transactions.find(
-        (tx) => tx.date === step.date && tx.price === step.price && tx.quantity === step.quantity,
-      )!,
-      code: selectedStock.value!.code,
-      name: selectedStock.value!.name,
-      stockType: selectedStock.value!.type,
+      ...step.originalTx,
+      code: stock.code,
+      name: stock.name,
+      stockType: stock.type,
     }))
   })
 

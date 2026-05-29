@@ -101,7 +101,7 @@ const registerSchema = z
     path: ['confirmPassword'],
   })
 
-const { handleSubmit } = useForm<z.infer<typeof registerSchema>>({
+const { handleSubmit } = useForm({
   validationSchema: registerSchema,
   initialValues: { displayName: '', email: '', password: '', confirmPassword: '' },
 })

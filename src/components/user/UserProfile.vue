@@ -208,9 +208,7 @@ const passwordSchema = z
     path: ['confirmPassword'],
   })
 
-type PasswordValues = z.infer<typeof passwordSchema>
-
-const { handleSubmit, handleReset } = useForm<PasswordValues>({
+const { handleSubmit, handleReset } = useForm({
   validationSchema: passwordSchema,
   initialValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
 })

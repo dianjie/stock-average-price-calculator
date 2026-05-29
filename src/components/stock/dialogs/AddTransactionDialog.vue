@@ -191,13 +191,11 @@ const schema = z.object({
   tags: z.array(z.string()),
 })
 
-type FormValues = z.infer<typeof schema>
-
 const {
   handleSubmit,
   setFieldValue,
   values: formValues,
-} = useForm<FormValues>({
+} = useForm({
   validationSchema: schema,
   initialValues: { date: today, type: '买入', price: 0, quantity: 100, tags: [] },
 })

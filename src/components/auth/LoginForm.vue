@@ -67,7 +67,7 @@ const loginSchema = z.object({
   password: z.string().min(6, '密码长度不能少于6个字符'),
 })
 
-const { handleSubmit } = useForm<z.infer<typeof loginSchema>>({
+const { handleSubmit } = useForm({
   validationSchema: loginSchema,
   initialValues: { email: '', password: '' },
 })

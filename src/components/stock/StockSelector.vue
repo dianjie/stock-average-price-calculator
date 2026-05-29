@@ -80,7 +80,7 @@ const stockSelectorSchema = z
     path: ['code'],
   })
 
-const { handleSubmit, resetForm } = useForm<z.infer<typeof stockSelectorSchema>>({
+const { handleSubmit, resetForm } = useForm({
   validationSchema: stockSelectorSchema,
   initialValues: { code: '', name: '', type: 'A股' },
 })

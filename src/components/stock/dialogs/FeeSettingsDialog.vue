@@ -295,7 +295,7 @@ const initialValues = (): FeeSettings => {
   return { ...props.feeSettings }
 }
 
-const { handleSubmit, setFieldValue } = useForm<FeeSettings>({
+const { handleSubmit, setFieldValue } = useForm({
   validationSchema: schema,
   initialValues: initialValues(),
 })

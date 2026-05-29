@@ -76,7 +76,7 @@ const option = computed(() => {
     tooltip: {
       formatter: (params: { data: [string, number] }) => {
         const date = params.data[0]
-        const day = dataMap.get(date) // 替代 props.data.find()
+        const day = dataMap.get(date)
         if (!day) return ''
         const sign = day.netAmount >= 0 ? '+' : ''
         return [
@@ -134,7 +134,7 @@ function onClick(params: ECElementEvent) {
   // 只要 params.data 存在，就能通过解构直接拿到日期
   if (params.data) {
     const date = (params.data as [string, number])[0]
-    const day = chartData.value.dataMap.get(date) // 同样使用 Map.get() 极速获取
+    const day = chartData.value.dataMap.get(date)
     if (day) {
       selectedDate.value = date
       selectedTransactions.value = day.transactions

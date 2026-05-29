@@ -46,7 +46,7 @@ export const reauthenticateUser = async (password: string): Promise<void> => {
     throw new Error('用户未登录或邮箱不存在')
   }
 
-  const credential = EmailAuthProvider.credential(user.email!, password)
+  const credential = EmailAuthProvider.credential(user.email, password)
 
   await reauthenticateWithCredential(user, credential)
 }

@@ -12,8 +12,8 @@
         <div class="flex items-center justify-between">
           <label class="text-muted-foreground text-xs">国际金价 (美元/盎司)</label>
           <FetchButton
-            :loading="fetchingGold"
-            :cooldown="goldFetchCooldown"
+            :loading="fetching"
+            :cooldown="cooldown"
             btn-text="获取行情"
             @fetch="fetchGoldPrice"
           />
@@ -29,12 +29,6 @@
 
         <div class="flex items-center justify-between">
           <label class="text-muted-foreground text-xs">汇率 (美元兑人民币)</label>
-          <FetchButton
-            :loading="fetchingRate"
-            :cooldown="rateFetchCooldown"
-            btn-text="获取汇率"
-            @fetch="fetchExchangeRate"
-          />
         </div>
         <Input
           type="number"
@@ -77,20 +71,14 @@
 
         <div class="flex items-center justify-between">
           <label class="text-muted-foreground text-xs">汇率 (美元兑人民币)</label>
-          <FetchButton
-            :loading="fetchingRate"
-            :cooldown="rateFetchCooldown"
-            btn-text="获取汇率"
-            @fetch="fetchExchangeRate"
-          />
         </div>
         <Input
           type="number"
-          :model-value="exchangeRateRev"
+          :model-value="exchangeRate"
           :step="0.0001"
           :min="0"
           placeholder="如 7.25"
-          @update:model-value="updateExchangeRateRev"
+          @update:model-value="updateExchangeRate"
         />
 
         <div class="flex items-center justify-between pt-1">
@@ -105,25 +93,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import FetchButton from './FetchButton.vue' // 引入独立组件
+import FetchButton from './FetchButton.vue'
 
-// 常量定义
+// 常量
 const OZ_TO_GRAM = 31.1035
 const COOLDOWN_SECONDS = 60
-const GOLD_API_URL = 'https://api.gold-api.com/price/XAU/USD'
-const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/CNY'
-const GOLD_STORAGE_KEY = 'gold_fetched_price'
-const RATE_STORAGE_KEY = 'gold_fetched_rate'
+const GOLD_API_URL = 'https://api.gold-api.com/price/XAU/CNY'
+const STORAGE_KEY = 'gold_price_cache'
 
 // 响应式状态
 const intlPrice = ref(0)
 const exchangeRate = ref(7.25)
 const domesticInput = ref(0)
-const exchangeRateRev = ref(7.25)
 
 // 计算属性
 const domesticPrice = computed(() => {
@@ -132,33 +117,26 @@ const domesticPrice = computed(() => {
 })
 
 const intlPriceRev = computed(() => {
-  if (domesticInput.value <= 0 || exchangeRateRev.value <= 0) return 0
-  return (domesticInput.value * OZ_TO_GRAM) / exchangeRateRev.value
+  if (domesticInput.value <= 0 || exchangeRate.value <= 0) return 0
+  return (domesticInput.value * OZ_TO_GRAM) / exchangeRate.value
 })
 
-// API调用状态
-const fetchingGold = ref(false)
-const fetchingRate = ref(false)
+// 获取行情状态
+const fetching = ref(false)
+const cooldown = ref(0)
 
-// 冷却计时器状态
-const goldFetchCooldown = ref(0)
-const rateFetchCooldown = ref(0)
-const goldTimer: ReturnType<typeof setInterval> | null = null
-const rateTimer: ReturnType<typeof setInterval> | null = null
-
-// 事件发射器
 const emit = defineEmits<{
   apply: [price: number]
 }>()
 
-// 方法定义
+// 应用价格
 function applyDomesticPrice() {
   if (domesticPrice.value > 0) {
     emit('apply', domesticPrice.value)
   }
 }
 
-// 输入值更新方法
+// 输入更新
 function updateIntlPrice(value: string | number) {
   intlPrice.value = Number(value) || 0
 }
@@ -171,154 +149,111 @@ function updateDomesticInput(value: string | number) {
   domesticInput.value = Number(value) || 0
 }
 
-function updateExchangeRateRev(value: string | number) {
-  exchangeRateRev.value = Number(value) || 0
-}
+// 冷却计时器
+const { startCooldown, clearCooldown } = (() => {
+  let timer: ReturnType<typeof setInterval> | null = null
 
-// 通用冷却计时器管理
-function startCooldown(
-  cooldownRef: Ref<number>,
-  timerRef: { value: ReturnType<typeof setInterval> | null },
-  duration: number = COOLDOWN_SECONDS,
-) {
-  cooldownRef.value = duration
-  clearTimer(timerRef)
-
-  timerRef.value = setInterval(() => {
-    cooldownRef.value--
-    if (cooldownRef.value <= 0) {
-      clearTimer(timerRef)
-    }
-  }, 1000)
-}
-
-function clearTimer(timerRef: { value: ReturnType<typeof setInterval> | null }) {
-  if (timerRef.value !== null) {
-    clearInterval(timerRef.value)
-    timerRef.value = null
+  function start(duration = COOLDOWN_SECONDS) {
+    cooldown.value = duration
+    if (timer) clearInterval(timer)
+    timer = setInterval(() => {
+      cooldown.value--
+      if (cooldown.value <= 0 && timer) {
+        clearInterval(timer)
+        timer = null
+      }
+    }, 1000)
   }
-}
+
+  function clear() {
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
+  }
+
+  return { startCooldown: start, clearCooldown: clear }
+})()
 
 // 数据持久化
-function persistValue(key: string, value: number) {
-  const payload = { value, ts: Date.now() }
-  localStorage.setItem(key, JSON.stringify(payload))
+function persistCache(intl: number, rate: number) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ intl, rate, ts: Date.now() }))
 }
 
-function restoreValue(key: string): { value: number; remainingCooldown: number } | null {
-  const raw = localStorage.getItem(key)
+function restoreCache(): { intl: number; rate: number; cooldown: number } | null {
+  const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return null
 
   try {
-    const parsed: { value: number; ts: number } = JSON.parse(raw)
-    if (typeof parsed.value !== 'number' || typeof parsed.ts !== 'number') return null
+    const parsed: { intl: number; rate: number; ts: number } = JSON.parse(raw)
+    if (
+      typeof parsed.intl !== 'number' ||
+      typeof parsed.rate !== 'number' ||
+      typeof parsed.ts !== 'number'
+    )
+      return null
 
     const elapsed = (Date.now() - parsed.ts) / 1000
     const remaining = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed))
-    return { value: parsed.value, remainingCooldown: remaining }
+    return { intl: parsed.intl, rate: parsed.rate, cooldown: remaining }
   } catch {
     return null
   }
 }
 
-// API 调用函数
+// 获取行情
 async function fetchGoldPrice() {
-  if (goldFetchCooldown.value > 0 || fetchingGold.value) return
+  if (cooldown.value > 0 || fetching.value) return
 
-  fetchingGold.value = true
+  fetching.value = true
   try {
     const response = await fetch(GOLD_API_URL)
     if (!response.ok) {
       throw new Error(`金价API请求失败: ${response.status} ${response.statusText}`)
     }
 
-    const data: { price: number } = await response.json()
-    if (typeof data.price === 'number' && data.price > 0) {
-      intlPrice.value = Math.round(data.price * 100) / 100
-      persistValue(GOLD_STORAGE_KEY, intlPrice.value)
-      toast.success('已更新伦敦金实时价格')
-    } else {
+    const data: { price: number; exchangeRate: number } = await response.json()
+
+    if (typeof data.price !== 'number' || typeof data.exchangeRate !== 'number') {
       toast.error('获取金价失败：数据格式异常')
+      return
     }
+
+    // price 为人民币/盎司，转换为美元/盎司
+    const usdPrice = data.price / data.exchangeRate
+    intlPrice.value = Math.round(usdPrice * 100) / 100
+    exchangeRate.value = data.exchangeRate
+    persistCache(intlPrice.value, exchangeRate.value)
+    toast.success('已更新伦敦金实时价格')
   } catch (error) {
     console.error('获取金价错误:', error)
     toast.error('获取伦敦金价格失败，请稍后重试')
   } finally {
-    fetchingGold.value = false
-    startCooldown(goldFetchCooldown, { value: goldTimer })
+    fetching.value = false
+    startCooldown()
   }
 }
 
-async function fetchExchangeRate() {
-  if (rateFetchCooldown.value > 0 || fetchingRate.value) return
-
-  fetchingRate.value = true
-  try {
-    const response = await fetch(EXCHANGE_RATE_API_URL)
-    if (!response.ok) {
-      throw new Error(`汇率API请求失败: ${response.status} ${response.statusText}`)
-    }
-
-    const data: { rates: { USD: number } } = await response.json()
-    const usdPerCny = data.rates.USD
-
-    if (typeof usdPerCny === 'number' && usdPerCny > 0) {
-      const rate = Math.round((1 / usdPerCny) * 10000) / 10000
-      exchangeRate.value = rate
-      if (exchangeRateRev.value <= 0) {
-        exchangeRateRev.value = rate
-      }
-      persistValue(RATE_STORAGE_KEY, rate)
-      toast.success(`已更新汇率：1 美元 = ${rate} 人民币`)
-    } else {
-      toast.error('获取汇率失败：数据格式异常')
-    }
-  } catch (error) {
-    console.error('获取汇率错误:', error)
-    toast.error('获取汇率失败，请稍后重试')
-  } finally {
-    fetchingRate.value = false
-    startCooldown(rateFetchCooldown, { value: rateTimer })
-  }
-}
-
-// 监听器 - 自动同步计算结果
+// 自动同步
 watch(domesticPrice, (val) => {
   if (val > 0) {
     domesticInput.value = Math.round(val * 100) / 100
   }
 })
 
-watch(domesticInput, (val) => {
-  if (val > 0 && exchangeRateRev.value > 0) {
-    // 更新反向计算的汇率
-    exchangeRateRev.value = exchangeRate.value
-  }
-})
-
-// 组件挂载和卸载
+// 挂载/卸载
 onMounted(() => {
-  // 恢复存储的数据
-  const goldData = restoreValue(GOLD_STORAGE_KEY)
-  if (goldData) {
-    intlPrice.value = goldData.value
-    if (goldData.remainingCooldown > 0) {
-      startCooldown(goldFetchCooldown, { value: goldTimer }, goldData.remainingCooldown)
-    }
-  }
-
-  const rateData = restoreValue(RATE_STORAGE_KEY)
-  if (rateData) {
-    exchangeRate.value = rateData.value
-    exchangeRateRev.value = rateData.value
-    if (rateData.remainingCooldown > 0) {
-      startCooldown(rateFetchCooldown, { value: rateTimer }, rateData.remainingCooldown)
+  const cached = restoreCache()
+  if (cached) {
+    intlPrice.value = cached.intl
+    exchangeRate.value = cached.rate
+    if (cached.cooldown > 0) {
+      startCooldown(cached.cooldown)
     }
   }
 })
 
 onUnmounted(() => {
-  clearTimer({ value: goldTimer })
-  clearTimer({ value: rateTimer })
+  clearCooldown()
 })
 </script>

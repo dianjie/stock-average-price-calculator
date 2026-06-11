@@ -25,6 +25,7 @@
           :min="0"
           placeholder="如 2650"
           @update:model-value="updateIntlPrice"
+          @blur="persistIntlAndRate"
         />
 
         <div class="flex items-center justify-between">
@@ -37,6 +38,7 @@
           :min="0"
           placeholder="如 7.25"
           @update:model-value="updateExchangeRate"
+          @blur="persistAllValues"
         />
 
         <div class="flex items-center justify-between pt-1">
@@ -67,6 +69,7 @@
           :min="0"
           placeholder="如 620"
           @update:model-value="updateDomesticInput"
+          @blur="persistDomesticAndRate"
         />
 
         <div class="flex items-center justify-between">
@@ -79,6 +82,7 @@
           :min="0"
           placeholder="如 7.25"
           @update:model-value="updateExchangeRate"
+          @blur="persistAllValues"
         />
 
         <div class="flex items-center justify-between pt-1">
@@ -93,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -176,28 +180,39 @@ const { startCooldown, clearCooldown } = (() => {
 })()
 
 // 数据持久化
-function persistCache(intl: number, rate: number) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ intl, rate, ts: Date.now() }))
+function persistIntlAndRate() {
+  const cache = _loadCache()
+  cache.intl = intlPrice.value
+  cache.rate = exchangeRate.value
+  _saveCache(cache)
 }
 
-function restoreCache(): { intl: number; rate: number; cooldown: number } | null {
+function persistDomesticAndRate() {
+  const cache = _loadCache()
+  cache.domestic = domesticInput.value
+  cache.rate = exchangeRate.value
+  _saveCache(cache)
+}
+
+function persistAllValues() {
+  _saveCache({
+    intl: intlPrice.value,
+    rate: exchangeRate.value,
+    domestic: domesticInput.value,
+  })
+}
+
+function _saveCache(partial: { intl: number; rate: number; domestic: number }) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...partial, ts: Date.now() }))
+}
+
+function _loadCache(): { intl: number; rate: number; domestic: number; ts: number } {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
-
+  if (!raw) return { intl: 0, rate: 7.25, domestic: 0, ts: 0 }
   try {
-    const parsed: { intl: number; rate: number; ts: number } = JSON.parse(raw)
-    if (
-      typeof parsed.intl !== 'number' ||
-      typeof parsed.rate !== 'number' ||
-      typeof parsed.ts !== 'number'
-    )
-      return null
-
-    const elapsed = (Date.now() - parsed.ts) / 1000
-    const remaining = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed))
-    return { intl: parsed.intl, rate: parsed.rate, cooldown: remaining }
+    return JSON.parse(raw)
   } catch {
-    return null
+    return { intl: 0, rate: 7.25, domestic: 0, ts: 0 }
   }
 }
 
@@ -223,7 +238,7 @@ async function fetchGoldPrice() {
     const usdPrice = data.price / data.exchangeRate
     intlPrice.value = Math.round(usdPrice * 100) / 100
     exchangeRate.value = data.exchangeRate
-    persistCache(intlPrice.value, exchangeRate.value)
+    persistIntlAndRate()
     toast.success('已更新伦敦金实时价格')
   } catch (error) {
     console.error('获取金价错误:', error)
@@ -234,21 +249,18 @@ async function fetchGoldPrice() {
   }
 }
 
-// 自动同步
-watch(domesticPrice, (val) => {
-  if (val > 0) {
-    domesticInput.value = Math.round(val * 100) / 100
-  }
-})
-
 // 挂载/卸载
 onMounted(() => {
-  const cached = restoreCache()
-  if (cached) {
-    intlPrice.value = cached.intl
-    exchangeRate.value = cached.rate
-    if (cached.cooldown > 0) {
-      startCooldown(cached.cooldown)
+  const cached = _loadCache()
+  intlPrice.value = cached.intl || 0
+  exchangeRate.value = cached.rate || 7.25
+  domesticInput.value = cached.domestic || 0
+
+  if (cached.ts > 0) {
+    const elapsed = (Date.now() - cached.ts) / 1000
+    const remaining = Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed))
+    if (remaining > 0) {
+      startCooldown(remaining)
     }
   }
 })

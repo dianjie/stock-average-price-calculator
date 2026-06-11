@@ -5,10 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { getTagColor } from '@/config/tags'
+import { calculateSellingFee } from '@/utils/feeCalculator'
 import type { Transaction } from '@/utils/stockStats'
+import type { FeeSettings } from '@/config/feeSettings'
 
 interface ColumnMeta {
   unit: string
+  stockType: string
+  code: string
+  feeSettings: FeeSettings
   onEdit: (index: number) => void
   onDelete: (index: number) => void
 }
@@ -100,6 +105,29 @@ export function createColumns(meta: ColumnMeta): ColumnDef<Transaction>[] {
           { class: 'tabular-nums' },
           ((row.getValue('totalAmount') as number) ?? 0).toFixed(2),
         ),
+    },
+    {
+      id: 'breakEven',
+      header: '回本价格',
+      cell: ({ row }) => {
+        const tx = row.original
+        if (tx.type !== '买入') {
+          return h('span', { class: 'text-muted-foreground text-xs' }, '-')
+        }
+        const totalCost = tx.totalAmount ?? tx.price * tx.quantity
+        const breakEven =
+          (totalCost +
+            calculateSellingFee(
+              tx.quantity,
+              totalCost / tx.quantity,
+              meta.stockType as 'A股' | 'ETF' | '积存金',
+              meta.code,
+              meta.feeSettings,
+            )) /
+          tx.quantity
+        return h('div', { class: 'tabular-nums' }, breakEven.toFixed(3))
+      },
+      enableSorting: false,
     },
     {
       accessorKey: 'tags',

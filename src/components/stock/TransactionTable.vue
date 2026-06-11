@@ -92,11 +92,15 @@ import {
 import { Button } from '@/components/ui/button'
 import { createColumns } from './columns'
 import type { Transaction } from '@/utils/stockStats'
+import type { FeeSettings } from '@/config/feeSettings'
 
 const props = defineProps<{
   transactions: Transaction[]
   selectedTransactions: Transaction[]
   unit: string
+  stockType: string
+  code: string
+  feeSettings: FeeSettings
 }>()
 
 const emit = defineEmits<{
@@ -133,6 +137,9 @@ const rowSelection = computed<RowSelectionState>({
 
 const columns = createColumns({
   unit: props.unit,
+  stockType: props.stockType,
+  code: props.code,
+  feeSettings: props.feeSettings,
   onEdit: (index: number) => emit('editTransaction', index),
   onDelete: (index: number) => emit('deleteTransaction', index),
 })

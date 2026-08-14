@@ -132,6 +132,7 @@ const option = computed(() => {
           },
           borderRadius: [2, 2, 0, 0],
         },
+        barMaxWidth: 60,
       },
       {
         name: '持仓均价',

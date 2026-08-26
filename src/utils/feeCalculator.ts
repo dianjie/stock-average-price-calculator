@@ -19,6 +19,23 @@ export function getMarketType(code: string): string {
   return '其他'
 }
 
+function calcFeeInternal(
+  type: TransactionType,
+  amount: number,
+  stockType: StockType,
+  isShanghai: boolean,
+  feeSettings: FeeSettings,
+) {
+  if (amount <= 0) return 0
+  if (stockType === '积存金') return type === '卖出' ? amount * feeSettings.goldSellFeeRate : 0
+  if (stockType === 'ETF') return amount * feeSettings.etfCommission
+
+  let fee = Math.max(amount * feeSettings.commission, feeSettings.minCommission)
+  if (type === '卖出') fee += amount * feeSettings.stampTax
+  if (isShanghai) fee += amount * feeSettings.transferFee
+  return fee
+}
+
 export function calculateTransactionFee(
   type: TransactionType,
   price: number,
@@ -26,29 +43,14 @@ export function calculateTransactionFee(
   stockType: StockType,
   marketType: string,
   feeSettings: FeeSettings,
-): number {
-  const amount = price * quantity
-  if (amount <= 0) return 0
-
-  if (stockType === '积存金') {
-    return type === '卖出' ? amount * feeSettings.goldSellFeeRate : 0
-  }
-
-  if (stockType === 'ETF') {
-    return amount * feeSettings.etfCommission
-  }
-
-  let fee = Math.max(amount * feeSettings.commission, feeSettings.minCommission)
-
-  if (type === '卖出') {
-    fee += amount * feeSettings.stampTax
-  }
-
-  if (marketType.startsWith('沪市')) {
-    fee += amount * feeSettings.transferFee
-  }
-
-  return fee
+) {
+  return calcFeeInternal(
+    type,
+    price * quantity,
+    stockType,
+    marketType.startsWith('沪市'),
+    feeSettings,
+  )
 }
 
 export function calculateSellingFee(
@@ -57,26 +59,12 @@ export function calculateSellingFee(
   stockType: StockType,
   code: string,
   feeSettings: FeeSettings,
-): number {
-  const amount = quantity * price
-
-  if (stockType === '积存金') {
-    return amount * feeSettings.goldSellFeeRate
-  }
-
-  let commission: number
-  if (stockType === 'A股') {
-    commission = Math.max(amount * feeSettings.commission, feeSettings.minCommission)
-  } else {
-    commission = amount * feeSettings.etfCommission
-  }
-
-  const stampTax = amount * feeSettings.stampTax
-
-  let transferFee = 0
-  if (getMarketType(code).startsWith('沪市')) {
-    transferFee = amount * feeSettings.transferFee
-  }
-
-  return commission + stampTax + transferFee
+) {
+  return calcFeeInternal(
+    '卖出',
+    quantity * price,
+    stockType,
+    getMarketType(code).startsWith('沪市'),
+    feeSettings,
+  )
 }

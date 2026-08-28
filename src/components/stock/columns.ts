@@ -1,6 +1,6 @@
 import { h } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import { ArrowUpDown } from 'lucide-vue-next'
+import { ArrowUpDown, SquarePen, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -158,7 +158,7 @@ export function createColumns(meta: ColumnMeta): ColumnDef<Transaction>[] {
               size: 'icon-sm',
               onClick: () => meta.onEdit(idx),
             },
-            () => '✎',
+            () => h(SquarePen, { class: 'size-4' }),
           ),
           h(
             Button,
@@ -168,7 +168,7 @@ export function createColumns(meta: ColumnMeta): ColumnDef<Transaction>[] {
               class: 'text-destructive',
               onClick: () => meta.onDelete(idx),
             },
-            () => '✕',
+            () => h(Trash2, { class: 'size-4' }),
           ),
         ])
       },

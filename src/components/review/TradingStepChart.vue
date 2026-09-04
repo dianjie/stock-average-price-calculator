@@ -35,7 +35,9 @@ const dataObj = computed(() => {
   const sell: TradeRow[] = []
   const line: [string, number][] = []
   const dateSet = new Set<string>()
-  const allPrices: number[] = []
+
+  let minPrice = Infinity
+  let maxPrice = -Infinity
 
   props.data.forEach((d) => {
     const row: TradeRow = [d.date, d.price, d.date, d.action, d.price, d.quantity]
@@ -46,19 +48,29 @@ const dataObj = computed(() => {
     }
     line.push([d.date, d.price])
     dateSet.add(d.date)
-    allPrices.push(d.price)
+
+    // ✅ 用循环代替 Math.min/max(...spread)，避免大数据量栈溢出
+    if (d.price < minPrice) minPrice = d.price
+    if (d.price > maxPrice) maxPrice = d.price
   })
+
+  // ✅ ETF 核心：基于实际价格范围动态计算 Y 轴边界
+  // 仅留 5% 缓冲，让几厘的价差占据尽可能多的纵向像素
+  const range = maxPrice - minPrice
+  const padding = range > 0 ? range * 0.05 : maxPrice * 0.005 || 0.001
+
   return {
     buy,
     sell,
     line,
     dates: Array.from(dateSet),
-    minPrice: Math.min(...allPrices),
+    yMin: Math.max(0, minPrice - padding),
+    yMax: maxPrice + padding,
   }
 })
 
 const option = computed(() => {
-  const { buy, sell, line, dates, minPrice } = dataObj.value
+  const { buy, sell, line, dates, yMin, yMax } = dataObj.value
 
   return {
     tooltip: {
@@ -68,11 +80,12 @@ const option = computed(() => {
         const color = action === '买入' ? '#ef4444' : '#22c55e'
         return [
           `<strong>${date}</strong>`,
-          `<span style="color:${color}">${action} ${price.toFixed(3)} × ${qty}</span>`,
+          `<span style="color:${color}">${action} ${price.toFixed(4)} × ${qty}</span>`,
         ].join('<br/>')
       },
     },
-    grid: { left: 70, right: 30, top: 40, bottom: 70 },
+    legend: { data: ['买入', '卖出'], top: 0 },
+    grid: { left: 70, right: 30, top: 40, bottom: 60 },
     xAxis: {
       type: 'category',
       data: dates,
@@ -81,9 +94,15 @@ const option = computed(() => {
     yAxis: {
       type: 'value',
       name: '价格',
-      min: Math.floor(minPrice * 0.985 * 1000) / 1000,
-      // 开启 Y 轴的数据缩放，允许用户放大查看细节
-      minInterval: 0.1, // 保证刻度足够精细
+      // ✅ 紧贴数据范围，不浪费任何纵向空间
+      min: yMin,
+      max: yMax,
+      // ✅ 增加刻度数量，让微小价差有足够参考线
+      splitNumber: 10,
+      axisLabel: {
+        // ✅ ETF 必须 4 位小数，否则不同价位显示相同值
+        formatter: (value: number) => value.toFixed(4),
+      },
     },
     dataZoom: [
       {

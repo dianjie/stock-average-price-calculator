@@ -3,7 +3,7 @@
     <h3 class="mb-3 text-sm font-medium">持仓图</h3>
     <div class="w-full overflow-auto">
       <div v-if="data.length > 0" class="min-h-125 resize overflow-auto">
-        <VChart class="min-h-125" :option="option" autoresize @click="onClick" />
+        <VChart ref="chartRef" class="min-h-125" :option="option" autoresize @click="onClick" />
       </div>
       <div v-else class="text-muted-foreground flex items-center justify-center text-sm">
         暂无交易数据
@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { watch, computed, ref } from 'vue'
 import VChart from 'vue-echarts'
 import type { ECElementEvent } from 'echarts/core'
 import type { CalendarDay } from '@/composables/review/useReviewDashboard'
@@ -43,19 +43,27 @@ const chartData = computed(() => {
   const dates: string[] = []
 
   let maxQty = 1
-  let maxPrice = 1
+  const prices: number[] = []
 
   props.data.forEach((d) => {
     dataMap.set(d.date, d)
     dates.push(d.date)
 
-    // 收集最大值，用于计算 Y 轴范围
     maxQty = Math.max(maxQty, d.quantity)
-    maxPrice = Math.max(maxPrice, d.buyPrice, d.sellPrice, d.avgCost)
+    if (d.avgCost > 0) prices.push(d.avgCost)
+    if (d.buyPrice > 0) prices.push(d.buyPrice)
+    if (d.sellPrice > 0) prices.push(d.sellPrice)
 
     barData.push([d.date, d.quantity, d.action || ''])
     lineData.push([d.date, d.avgCost])
   })
+
+  // ✅ ETF 优化：价格轴基于实际数据动态计算范围，而非从 0 开始
+  const minPrice = prices.length ? Math.min(...prices) : 0
+  const maxPriceVal = prices.length ? Math.max(...prices) : 1
+  const pricePadding = (maxPriceVal - minPrice) * 0.15 || maxPriceVal * 0.01
+  const adjustedMinPrice = Math.max(0, minPrice - pricePadding)
+  const adjustedMaxPrice = maxPriceVal + pricePadding
 
   return {
     dataMap,
@@ -63,24 +71,27 @@ const chartData = computed(() => {
     lineData,
     dates,
     maxQty: maxQty * 1.2,
-    maxPrice: maxPrice * 1.1,
+    adjustedMinPrice,
+    adjustedMaxPrice,
   }
 })
 
 // 2. 视图配置层：纯配置组装，通过 Map.get() 实现 O(1) 极速查找
 const option = computed(() => {
-  const { dataMap, barData, lineData, dates, maxQty, maxPrice } = chartData.value
+  const { dataMap, barData, lineData, dates, maxQty, adjustedMinPrice, adjustedMaxPrice } =
+    chartData.value
 
   return {
     tooltip: {
       trigger: 'axis',
       formatter: (params: { seriesName: string; data: [string, number] }[]) => {
         const date = params[0]?.data?.[0]
-        const pt = dataMap.get(date) // 极速查找，替代 props.data.find()
+        const pt = dataMap.get(date)
         if (!pt) return date
         const lines = [`<strong>${date}</strong>`]
         lines.push(`持仓量: ${pt.quantity}`)
         if (pt.buyQty > 0) {
+          // ✅ ETF 优化：统一保留 4 位小数
           lines.push(`买入均价: ${pt.buyPrice.toFixed(4)}`)
           lines.push(`买入数量: ${pt.buyQty}`)
           lines.push(`买入次数: ${pt.buyCount}`)
@@ -95,7 +106,7 @@ const option = computed(() => {
       },
     },
     legend: { data: ['持仓量', '持仓均价'], top: 0 },
-    grid: { left: 60, right: 70, top: 40, bottom: 70 },
+    grid: { left: 70, right: 80, top: 40, bottom: 80 },
     xAxis: {
       type: 'category',
       data: dates,
@@ -113,8 +124,27 @@ const option = computed(() => {
       {
         type: 'value',
         name: '价格',
-        max: maxPrice,
-        axisLabel: { formatter: (value: number) => Number(value.toFixed(4)) },
+        // ✅ ETF 优化：动态 min/max + 增加刻度密度
+        min: adjustedMinPrice,
+        max: adjustedMaxPrice,
+        splitNumber: 8,
+        axisLabel: {
+          formatter: (value: number) => value.toFixed(4),
+        },
+      },
+    ],
+    dataZoom: [
+      {
+        type: 'inside',
+        xAxisIndex: 0,
+        filterMode: 'none',
+      },
+      {
+        type: 'slider',
+        xAxisIndex: 0,
+        bottom: 10,
+        height: 20,
+        filterMode: 'none',
       },
     ],
     series: [
@@ -123,7 +153,6 @@ const option = computed(() => {
         type: 'bar',
         data: barData,
         itemStyle: {
-          // 通过解构直接拿到我们在 chartData 中存入的 action
           color: (p: { data: [string, number, string] }) => {
             const action = p.data[2]
             if (action === '买入') return '#fecaca'
@@ -142,7 +171,21 @@ const option = computed(() => {
         data: lineData,
         lineStyle: { color: '#3b82f6', width: 2 },
         itemStyle: { color: '#3b82f6' },
-        symbol: 'none',
+        symbol: 'circle',
+        symbolSize: 6,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(59,130,246,0.15)' },
+              { offset: 1, color: 'rgba(59,130,246,0)' },
+            ],
+          },
+        },
       },
     ],
   }
@@ -152,16 +195,12 @@ const option = computed(() => {
 function onClick(params: ECElementEvent) {
   let date: string | undefined
 
-  // 情况1：点击了柱子（series 事件），日期在 params.data[0] 里
   if (params.componentType === 'series' && params.data) {
     date = (params.data as string[])[0]
-  }
-  // 情况2：点击了 X 轴标签（xAxis 事件），日期在 params.value 里
-  else if (params.componentType === 'xAxis') {
+  } else if (params.componentType === 'xAxis') {
     date = params.value as string
   }
 
-  // 如果成功拿到了日期，就打开弹窗
   if (date) {
     selectedDate.value = date
     selectedTransactions.value = props.transactions.filter((tx) => tx.date === date)
@@ -170,4 +209,16 @@ function onClick(params: ECElementEvent) {
     }
   }
 }
+
+const chartRef = ref<InstanceType<typeof VChart>>()
+
+watch(
+  () => props.data,
+  () => {
+    chartRef.value?.dispatchAction({
+      type: 'dataZoom',
+      batch: [{ xAxisIndex: 0, start: 0, end: 100 }],
+    })
+  },
+)
 </script>

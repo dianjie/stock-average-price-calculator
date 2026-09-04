@@ -65,8 +65,9 @@ export function useReviewDashboard(selectedStock: Ref<StockItem>) {
         totalCost += amount
         totalQty += tx.quantity
       } else {
-        const avgBeforeSell = totalQty > 0 ? totalCost / totalQty : 0
-        totalCost -= avgBeforeSell * tx.quantity
+        // const avgBeforeSell = totalQty > 0 ? totalCost / totalQty : 0
+        // totalCost -= avgBeforeSell * tx.quantity
+        totalCost -= amount // 卖出所得直接抵消成本
         totalQty -= tx.quantity
         if (totalQty <= 0.00001) {
           totalQty = 0
@@ -132,8 +133,9 @@ export function useReviewDashboard(selectedStock: Ref<StockItem>) {
         positionQty += day.buyQty
       }
       if (day.sellQty > 0) {
-        const avgBeforeSell = positionQty > 0 ? positionCost / positionQty : 0
-        positionCost -= avgBeforeSell * day.sellQty
+        // const avgBeforeSell = positionQty > 0 ? positionCost / positionQty : 0
+        // positionCost -= avgBeforeSell * day.sellQty
+        positionCost -= day.sellAmount // 卖出所得直接抵消成本
         positionQty -= day.sellQty
         if (positionQty <= 0.00001) {
           positionQty = 0

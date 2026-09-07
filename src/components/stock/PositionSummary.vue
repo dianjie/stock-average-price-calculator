@@ -70,10 +70,10 @@
         <span
           :class="[
             'text-right font-semibold tabular-nums',
-            stats.profitAndLoss + stats.realizedProfit >= 0 ? 'text-red-500' : 'text-green-500',
+            stats.profitAndLoss >= 0 ? 'text-red-500' : 'text-green-500',
           ]"
         >
-          {{ formatCurrency(stats.profitAndLoss + stats.realizedProfit) }}
+          {{ formatCurrency(stats.profitAndLoss) }}
         </span>
       </div>
       <div class="flex items-center justify-between gap-2">

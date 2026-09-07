@@ -60,7 +60,6 @@ export function computeStockStats(
   let averageCost = 0
   let realizedProfit = 0
   let netInvestment = 0
-  let totalBuyAmount = 0 // 👈 新增：累计买入投入（百分比的分母）
 
   const sortedTransactions = [...stock.transactions].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -73,7 +72,6 @@ export function computeStockStats(
       averageCost = (averageCost * totalShares + buyAmount) / (totalShares + buyQty)
       totalShares += buyQty
       netInvestment += buyAmount
-      totalBuyAmount += buyAmount // 👈 累计买入
     } else {
       const sellAmount = transaction.totalAmount || 0
       const sellQty = transaction.quantity || 0
@@ -112,7 +110,8 @@ export function computeStockStats(
   }
 
   // ✅ 百分比 = 总盈亏 / 累计买入投入
-  const profitAndLossPercentage = totalBuyAmount > 0 ? (profitAndLoss / totalBuyAmount) * 100 : 0
+  const profitAndLossPercentage =
+    totalInvestment > 0.00001 ? (profitAndLoss / totalInvestment) * 100 : 0
 
   return {
     currentQuantity: totalShares,

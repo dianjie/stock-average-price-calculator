@@ -9,10 +9,26 @@
           formatQty(stats.currentQuantity)
         }}</span>
       </div>
-      <div class="flex items-center justify-between gap-2">
+      <!-- <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">平均成本</span>
         <span class="text-right font-semibold tabular-nums">{{
           formatCurrency(stats.averageCost, 3)
+        }}</span>
+      </div> -->
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-xs">
+          成本价
+          <TooltipProvider :delay-duration="200">
+            <Tooltip>
+              <TooltipTrigger class="inline-flex cursor-help">
+                <Info class="text-muted-foreground size-3" />
+              </TooltipTrigger>
+              <TooltipContent class="max-w-56"> 考虑历史已实现盈亏后的实际回本价 </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </span>
+        <span class="text-right font-bold text-red-500 tabular-nums">{{
+          formatCurrency(stats.breakEvenPrice, 3)
         }}</span>
       </div>
       <div class="flex items-center justify-between gap-2">
@@ -33,7 +49,7 @@
           @update:model-value="(v: string | number) => emit('update:modelValue', Number(v))"
         />
       </div>
-      <div class="flex items-center justify-between gap-2">
+      <!-- <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-xs">
           回本价格
           <TooltipProvider :delay-duration="200">
@@ -48,7 +64,7 @@
         <span class="text-right font-bold text-red-500 tabular-nums">{{
           formatCurrency(stats.breakEvenPrice, 3)
         }}</span>
-      </div>
+      </div> -->
       <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">费用统计</span>
         <div class="flex items-center gap-0.5">
@@ -70,19 +86,18 @@
           </TooltipProvider>
         </div>
       </div>
-
       <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">持仓盈亏</span>
         <span
           :class="[
             'text-right font-semibold tabular-nums',
-            stats.profitAndLoss >= 0 ? 'text-red-500' : 'text-green-500',
+            stats.profitAndLoss + stats.realizedProfit >= 0 ? 'text-red-500' : 'text-green-500',
           ]"
         >
-          {{ formatCurrency(stats.profitAndLoss) }}
+          {{ formatCurrency(stats.profitAndLoss + stats.realizedProfit) }}
         </span>
       </div>
-      <div class="flex items-center justify-between gap-2">
+      <!-- <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">已实现盈亏</span>
         <span
           :class="[
@@ -92,7 +107,7 @@
         >
           {{ formatCurrency(stats.realizedProfit) }}
         </span>
-      </div>
+      </div> -->
       <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">盈亏百分比</span>
         <span

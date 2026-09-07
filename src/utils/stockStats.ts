@@ -109,9 +109,13 @@ export function computeStockStats(
     breakEvenPrice = (netInvestment + estimatedFee) / totalShares
   }
 
-  // ✅ 百分比 = 总盈亏 / 累计买入投入
-  const profitAndLossPercentage =
-    totalInvestment > 0.00001 ? (profitAndLoss / totalInvestment) * 100 : 0
+  // 【核心修改 2】盈亏百分比 (东方财富口径)
+  // 公式：(现价 - 成本价) / 成本价
+  // ==========================================
+  let profitAndLossPercentage = 0
+  if (averageCost > 0.00001) {
+    profitAndLossPercentage = ((price - averageCost) / averageCost) * 100
+  }
 
   return {
     currentQuantity: totalShares,

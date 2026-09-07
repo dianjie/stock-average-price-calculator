@@ -66,6 +66,17 @@
         }}</span>
       </div> -->
       <div class="flex items-center justify-between gap-2">
+        <span class="text-muted-foreground shrink-0 text-xs">持仓盈亏</span>
+        <span
+          :class="[
+            'text-right font-semibold tabular-nums',
+            stats.profitAndLoss + stats.realizedProfit >= 0 ? 'text-red-500' : 'text-green-500',
+          ]"
+        >
+          {{ formatCurrency(stats.profitAndLoss + stats.realizedProfit) }}
+        </span>
+      </div>
+      <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">费用统计</span>
         <div class="flex items-center gap-0.5">
           <span class="font-semibold tabular-nums">{{ formatCurrency(totalFees) }}</span>
@@ -85,17 +96,6 @@
             </Tooltip>
           </TooltipProvider>
         </div>
-      </div>
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-muted-foreground shrink-0 text-xs">持仓盈亏</span>
-        <span
-          :class="[
-            'text-right font-semibold tabular-nums',
-            stats.profitAndLoss + stats.realizedProfit >= 0 ? 'text-red-500' : 'text-green-500',
-          ]"
-        >
-          {{ formatCurrency(stats.profitAndLoss + stats.realizedProfit) }}
-        </span>
       </div>
       <!-- <div class="flex items-center justify-between gap-2">
         <span class="text-muted-foreground shrink-0 text-xs">已实现盈亏</span>

@@ -35,11 +35,15 @@ export interface StockStats {
   totalInvestment: number
   realizedProfit: number
   breakEvenPrice: number
-  profitAndLoss: number
-  profitAndLossPercentage: number
+  profitAndLoss: number // 已实现 + 浮动 的总盈亏
+  profitAndLossPercentage: number // 总盈亏 / 累计买入投入
 }
 
-export function computeStockStats(stock: StockItem, currentPrice?: number, feeSettings?: FeeSettings): StockStats {
+export function computeStockStats(
+  stock: StockItem,
+  currentPrice?: number,
+  feeSettings?: FeeSettings,
+): StockStats {
   if (!stock || !stock.transactions || stock.transactions.length === 0) {
     return {
       currentQuantity: 0,
@@ -56,6 +60,7 @@ export function computeStockStats(stock: StockItem, currentPrice?: number, feeSe
   let averageCost = 0
   let realizedProfit = 0
   let netInvestment = 0
+  let totalBuyAmount = 0 // 👈 新增：累计买入投入（百分比的分母）
 
   const sortedTransactions = [...stock.transactions].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -68,6 +73,7 @@ export function computeStockStats(stock: StockItem, currentPrice?: number, feeSe
       averageCost = (averageCost * totalShares + buyAmount) / (totalShares + buyQty)
       totalShares += buyQty
       netInvestment += buyAmount
+      totalBuyAmount += buyAmount // 👈 累计买入
     } else {
       const sellAmount = transaction.totalAmount || 0
       const sellQty = transaction.quantity || 0
@@ -84,19 +90,29 @@ export function computeStockStats(stock: StockItem, currentPrice?: number, feeSe
   totalShares = Number(totalShares.toFixed(4))
   const totalInvestment = averageCost * totalShares
   const price = currentPrice ?? stock.currentPrice ?? 0
-  const profitAndLoss = (price - averageCost) * totalShares
 
+  // ✅ 浮动盈亏（当前持仓部分）
+  const holdingProfit = (price - averageCost) * totalShares
+
+  // ✅ 总盈亏 = 已实现盈亏 + 浮动盈亏
+  const profitAndLoss = realizedProfit + holdingProfit
+
+  // 回本价逻辑不变
   const noFeeBreakEven = totalShares > 0.00001 ? netInvestment / totalShares : 0
   let breakEvenPrice = noFeeBreakEven
   if (feeSettings && totalShares > 0.00001) {
-    const estimatedFee = calculateSellingFee(totalShares, noFeeBreakEven, stock.type, stock.code, feeSettings)
+    const estimatedFee = calculateSellingFee(
+      totalShares,
+      noFeeBreakEven,
+      stock.type,
+      stock.code,
+      feeSettings,
+    )
     breakEvenPrice = (netInvestment + estimatedFee) / totalShares
   }
 
-  let profitAndLossPercentage = 0
-  if (totalInvestment > 0) {
-    profitAndLossPercentage = (profitAndLoss / totalInvestment) * 100
-  }
+  // ✅ 百分比 = 总盈亏 / 累计买入投入
+  const profitAndLossPercentage = totalBuyAmount > 0 ? (profitAndLoss / totalBuyAmount) * 100 : 0
 
   return {
     currentQuantity: totalShares,

@@ -358,7 +358,10 @@ export function useStockCalculator({
       return
     }
 
+    // 1. 计算【选中交易】的平均买入价
     const avgBuy = cost / qty
+
+    // 2. 计算【选中交易】的预估卖出手续费
     const effectiveFee = resolveFeeSettings(feeSettings.value, currentStock.value.customFeeSettings)
     const estFee = calculateSellingFee(
       qty,
@@ -367,14 +370,47 @@ export function useStockCalculator({
       currentStock.value.code,
       effectiveFee,
     )
+
+    // 3. 计算选中交易的保本价
     const breakEven = Math.max(0, (cost + estFee) / qty)
 
-    const origAvg = currentStats.value.averageCost
-    const newCost = currentStats.value.totalInvestment - cost
-    const newQty = currentStats.value.currentQuantity - qty
-    const newAvg = newQty > 0 ? newCost / newQty : 0
-    const pctChg = origAvg > 0 && newAvg > 0 ? ((newAvg - origAvg) / origAvg) * 100 : 0
+    // 4. 获取原持仓数据
+    const origStats = currentStats.value
+    const origTotalShares = origStats.currentQuantity
+    // 原持仓成本价（UI上显示的含手续费保本价）
+    const origCostPrice = origStats.breakEvenPrice
 
+    // 5. 计算卖出后的新持仓数据
+    const newTotalShares = Number((origTotalShares - qty).toFixed(4))
+
+    // 卖出后新成本价
+    let newCostPrice = 0
+    if (newTotalShares > 0.00001) {
+      // 核心修正：计算新成本价时，必须扣除【选中交易】的成本，而不是原持仓的均价！
+      // 剩余总成本 = 原总成本 - 选中交易的总成本
+      const remainingTotalCost = origCostPrice * origTotalShares - cost
+
+      // 重新计算剩余持仓的预估卖出手续费
+      // 这里用 avgBuy 作为预估价来计算剩余部分的手续费
+      const newEstFee = calculateSellingFee(
+        newTotalShares,
+        avgBuy,
+        currentStock.value.type,
+        currentStock.value.code,
+        effectiveFee,
+      )
+
+      // 新成本价 = (剩余总成本 + 剩余预估卖出手续费) / 剩余数量
+      newCostPrice = (remainingTotalCost + newEstFee) / newTotalShares
+    }
+
+    // 6. 计算成本价变化百分比
+    const pctChg =
+      origCostPrice > 0 && newCostPrice > 0
+        ? ((newCostPrice - origCostPrice) / origCostPrice) * 100
+        : 0
+
+    // 7. 赋值并弹窗
     breakEvenCalculation.value = {
       selectedCount: selectedTransactions.value.length,
       data: {
@@ -383,8 +419,8 @@ export function useStockCalculator({
         averageBuyPrice: avgBuy,
         breakEvenPrice: breakEven,
         estimatedSellingFee: estFee,
-        originalAveragePrice: origAvg,
-        newAveragePrice: newAvg,
+        originalAveragePrice: origCostPrice, // 原持仓成本价
+        newAveragePrice: newCostPrice, // 卖出后新成本价
         priceChangePercentage: pctChg,
       },
     }

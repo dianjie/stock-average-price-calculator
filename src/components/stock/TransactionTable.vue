@@ -69,6 +69,24 @@
       >
         {{ table.getFilteredSelectedRowModel().rows.length }} /
         {{ table.getFilteredRowModel().rows.length }} 条已选
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button
+                v-if="table.getFilteredSelectedRowModel().rows.length"
+                size="icon-sm"
+                variant="outline"
+                @click="$emit('showSelectProfit')"
+              >
+                <InfoIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>计算选中交易盈亏</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <slot></slot>
@@ -90,9 +108,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { createColumns } from './columns'
 import type { Transaction } from '@/utils/stockStats'
 import type { FeeSettings } from '@/config/feeSettings'
+import { InfoIcon } from 'lucide-vue-next'
 
 const props = defineProps<{
   transactions: Transaction[]
@@ -111,6 +131,7 @@ const emit = defineEmits<{
   batchDelete: []
   editTransaction: [index: number]
   deleteTransaction: [index: number]
+  showSelectProfit: []
 }>()
 
 const sorting = ref<SortingState>([])

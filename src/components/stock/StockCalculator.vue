@@ -66,6 +66,7 @@
             @batch-delete="selectedTransactions.length > 0 && (batchDeleteDialogVisible = true)"
             @edit-transaction="editTransaction"
             @delete-transaction="confirmDeleteTx"
+            @show-select-profit="showSelectProfit"
           >
             <PositionSummary
               v-if="currentStock.transactions.length > 0"
@@ -210,6 +211,11 @@
       @update:open="importDialogVisible = $event"
       @import="onImportData"
     />
+
+    <ProfitCalculatorDialog
+      v-model:open="dialogOpen"
+      :selected-transactions="selectedTransactions"
+    />
   </div>
 </template>
 
@@ -247,6 +253,7 @@ import BreakEvenDialog from './dialogs/BreakEvenDialog.vue'
 import DailyFeesDialog from './dialogs/DailyFeesDialog.vue'
 import ConfirmDialog from './dialogs/ConfirmDialog.vue'
 import ImportDialog from './dialogs/ImportDialog.vue'
+import ProfitCalculatorDialog from './dialogs/ProfitCalculatorDialog.vue'
 import TradingCalendar from '@/components/review/TradingCalendar.vue'
 import TradingStepChart from '@/components/review/TradingStepChart.vue'
 import PositionChart from '@/components/review/PositionChart.vue'
@@ -258,6 +265,10 @@ const { feeSettings, loadFeeSettings, saveFeeSettings } = useFeeSettings()
 const calc = useStockCalculator({ stocks, feeSettings, saveData, recalculateAllStocks })
 
 const importDialogVisible = ref(false)
+const dialogOpen = ref(false)
+function showSelectProfit() {
+  dialogOpen.value = true
+}
 
 const {
   activeStockIndex,

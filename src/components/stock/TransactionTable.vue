@@ -73,12 +73,7 @@
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger as-child>
-              <Button
-                v-if="table.getFilteredSelectedRowModel().rows.length"
-                size="icon-sm"
-                variant="outline"
-                @click="$emit('showSelectProfit')"
-              >
+              <Button size="icon-sm" variant="outline" @click="$emit('showSelectProfit')">
                 <InfoIcon />
               </Button>
             </TooltipTrigger>

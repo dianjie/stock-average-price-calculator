@@ -86,7 +86,7 @@ export function computeStockStats(
   }
 
   totalShares = Number(totalShares.toFixed(4))
-  const totalInvestment = averageCost * totalShares
+  
   const price = currentPrice ?? stock.currentPrice ?? 0
 
   // ✅ 浮动盈亏（当前持仓部分）
@@ -108,6 +108,9 @@ export function computeStockStats(
     )
     breakEvenPrice = (netInvestment + estimatedFee) / totalShares
   }
+
+   // 总投入 = 回本价 × 剩余股数
+  const totalInvestment = breakEvenPrice * totalShares
 
   // 收益率百分比 = 总盈亏 / 累计买入投入
   const profitAndLossPercentage =

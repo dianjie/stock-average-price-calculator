@@ -18,8 +18,14 @@
           </div>
         </div>
         <div class="rounded-md border">
-          <Table>
-            <TableHeader>
+          <Table
+            :style="{
+              borderRadius: 'calc(var(--radius) - 2px)',
+              borderWidth: '1px',
+              maxHeight: '450px',
+            }"
+          >
+            <TableHeader class="bg-background sticky top-0 z-50">
               <TableRow>
                 <TableHead class="w-32">日期</TableHead>
                 <TableHead>数量</TableHead>

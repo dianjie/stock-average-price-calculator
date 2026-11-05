@@ -43,6 +43,11 @@ const summary = computed(() => {
 
   const remainingShares = totalBuyShares - totalSellShares
 
+  // 买入均价（含手续费成本）
+  const avgBuyPrice = totalBuyShares > 0 ? totalBuyCost / totalBuyShares : 0
+  // 卖出均价（扣除手续费后到手）
+  const avgSellPrice = totalSellShares > 0 ? totalSellReceived / totalSellShares : 0
+
   // 平均买入成本（用于算已实现盈亏）
   const avgCost = totalBuyShares > 0 ? totalBuyCost / totalBuyShares : 0
 
@@ -69,6 +74,8 @@ const summary = computed(() => {
     breakEvenPrice,
     totalBuyShares,
     totalSellShares,
+    avgBuyPrice,
+    avgSellPrice,
   }
 })
 </script>
@@ -92,6 +99,14 @@ const summary = computed(() => {
               {{ summary.totalBuyCost.toFixed(2) }} 元
             </p>
             <p class="text-muted-foreground mt-1 text-xs"> {{ summary.totalBuyShares }} 股 </p>
+            <!-- 新增：买入均价 -->
+            <p class="text-muted-foreground border-border mt-1 border-t pt-1 text-xs">
+              买入均价:
+              <span class="text-foreground font-medium tabular-nums">{{
+                summary.avgBuyPrice.toFixed(4)
+              }}</span>
+              元/股
+            </p>
           </div>
           <div class="bg-muted rounded-lg p-3 text-center">
             <p class="text-muted-foreground mb-1">总卖出</p>
@@ -99,6 +114,14 @@ const summary = computed(() => {
               {{ summary.totalSellReceived.toFixed(2) }} 元
             </p>
             <p class="text-muted-foreground mt-1 text-xs"> {{ summary.totalSellShares }} 股 </p>
+            <!-- 新增：卖出均价 -->
+            <p class="text-muted-foreground border-border mt-1 border-t pt-1 text-xs">
+              卖出均价:
+              <span class="text-foreground font-medium tabular-nums">{{
+                summary.avgSellPrice.toFixed(4)
+              }}</span>
+              元/股
+            </p>
           </div>
         </div>
 

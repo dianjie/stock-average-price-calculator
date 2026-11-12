@@ -35,51 +35,73 @@ const dialogOpen = ref(false)
 const selectedDate = ref('')
 const selectedTransactions = ref<Transaction[]>([])
 
-// 1. 数据处理层：只遍历一次 props.data，生成 Map 和图表所需的基础数据
+const JUMP_RATIO = 1 // 相对上一有效均价跳变 >100% 视为飙升失真点；波动大的杠杆/商品ETF可调到 2~3
+
 const chartData = computed(() => {
   const dataMap = new Map<string, CalendarDay>()
-  const barData: [string, number, string][] = [] // [date, quantity, action]
-  const lineData: [string, number][] = [] // [date, avgCost]
+  const barData: [string, number, string][] = []
+  const lineData: [string, number | null][] = []
   const dates: string[] = []
+  const spikeDates = new Set<string>() // 记录被忽略的点，给 tooltip 用
 
   let maxQty = 1
-  const prices: number[] = []
+  const prices: number[] = [] // 只收有效均价，飙升点不进，Y轴不会被撑爆
+  let prevValidAvg: number | null = null
 
   props.data.forEach((d) => {
     dataMap.set(d.date, d)
     dates.push(d.date)
-
     maxQty = Math.max(maxQty, d.quantity)
-    if (d.avgCost > 0) prices.push(d.avgCost)
     if (d.buyPrice > 0) prices.push(d.buyPrice)
     if (d.sellPrice > 0) prices.push(d.sellPrice)
 
+    const avg = d.avgCost
+    const jump = prevValidAvg && prevValidAvg > 0 ? Math.abs(avg - prevValidAvg) / prevValidAvg : 0
+    // 病态：均价非正（成本被冲成 0/负）或相对上一正常点跳变过大
+    const invalid = avg <= 0 || jump > JUMP_RATIO
+
+    if (invalid) {
+      spikeDates.add(d.date)
+      lineData.push([d.date, null])
+      // ⚠️ 不更新 prevValidAvg：后续点继续跟"飙升前"比，
+      //    连成一片的高位失真段会被整体忽略，直到均价回落到合理区间
+    } else {
+      lineData.push([d.date, Number(avg.toFixed(4))])
+      prices.push(avg)
+      prevValidAvg = avg
+    }
+
     barData.push([d.date, d.quantity, d.action || ''])
-    lineData.push([d.date, d.avgCost])
   })
 
-  // ✅ ETF 优化：价格轴基于实际数据动态计算范围，而非从 0 开始
   const minPrice = prices.length ? Math.min(...prices) : 0
   const maxPriceVal = prices.length ? Math.max(...prices) : 1
   const pricePadding = (maxPriceVal - minPrice) * 0.15 || maxPriceVal * 0.01
-  const adjustedMinPrice = Math.max(0, minPrice - pricePadding)
-  const adjustedMaxPrice = maxPriceVal + pricePadding
 
   return {
     dataMap,
     barData,
     lineData,
     dates,
+    spikeDates,
     maxQty: maxQty * 1.2,
-    adjustedMinPrice,
-    adjustedMaxPrice,
+    adjustedMinPrice: Math.max(0, minPrice - pricePadding),
+    adjustedMaxPrice: maxPriceVal + pricePadding,
   }
 })
 
 // 2. 视图配置层：纯配置组装，通过 Map.get() 实现 O(1) 极速查找
 const option = computed(() => {
-  const { dataMap, barData, lineData, dates, maxQty, adjustedMinPrice, adjustedMaxPrice } =
-    chartData.value
+  const {
+    dataMap,
+    barData,
+    lineData,
+    dates,
+    spikeDates,
+    maxQty,
+    adjustedMinPrice,
+    adjustedMaxPrice,
+  } = chartData.value
 
   return {
     tooltip: {
@@ -101,7 +123,11 @@ const option = computed(() => {
           lines.push(`卖出数量: ${pt.sellQty}`)
           lines.push(`卖出次数: ${pt.sellCount}`)
         }
-        lines.push(`持仓均价: ${pt.avgCost.toFixed(4)}`)
+        if (spikeDates.has(date)) {
+          lines.push(`持仓均价: —（持仓 ${pt.quantity} 时成本失真，已忽略）`)
+        } else {
+          lines.push(`持仓均价: ${pt.avgCost.toFixed(4)}`)
+        }
         return lines.join('<br/>')
       },
     },
@@ -169,6 +195,7 @@ const option = computed(() => {
         yAxisIndex: 1,
         step: 'end',
         data: lineData,
+        connectNulls: false,
         lineStyle: { color: '#3b82f6', width: 2 },
         itemStyle: { color: '#3b82f6' },
         symbol: 'circle',

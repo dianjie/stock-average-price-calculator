@@ -17,13 +17,13 @@
         <div class="flex justify-between border-b pb-1">
           <span class="text-muted-foreground">平均持仓成本</span>
           <span class="font-medium tabular-nums">{{
-            formatCurrency(data.averageBuyPrice, 3)
+            formatCurrency(data.averageBuyPrice, 4)
           }}</span>
         </div>
         <div class="flex justify-between border-b pb-1">
           <span class="text-muted-foreground">不亏钱卖出价</span>
           <span class="text-base font-bold text-red-500 tabular-nums">{{
-            formatCurrency(data.breakEvenPrice, 3)
+            formatCurrency(data.breakEvenPrice, 4)
           }}</span>
         </div>
         <div class="flex justify-between border-b pb-1">
@@ -35,7 +35,7 @@
         <div class="flex justify-between border-b pb-1">
           <span class="text-muted-foreground">原持仓均价</span>
           <span class="font-medium tabular-nums">{{
-            formatCurrency(data.originalAveragePrice, 3)
+            formatCurrency(data.originalAveragePrice, 4)
           }}</span>
         </div>
         <div v-if="data.newAveragePrice > 0" class="flex justify-between border-b pb-1">
@@ -46,7 +46,7 @@
               data.priceChangePercentage >= 0 ? 'text-red-500' : 'text-green-500',
             ]"
           >
-            {{ formatCurrency(data.newAveragePrice, 3) }}
+            {{ formatCurrency(data.newAveragePrice, 4) }}
             <span class="ml-2"
               >({{ data.priceChangePercentage >= 0 ? '+' : ''
               }}{{ formatCurrency(data.priceChangePercentage, 2) }}%)</span

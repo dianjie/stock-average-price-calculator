@@ -67,6 +67,7 @@
             @edit-transaction="editTransaction"
             @delete-transaction="confirmDeleteTx"
             @show-select-profit="showSelectProfit"
+            @calc-partial-profit="calcDialogOpen = true"
           >
             <PositionSummary
               v-if="currentStock.transactions.length > 0"
@@ -216,6 +217,12 @@
       v-model:open="dialogOpen"
       :selected-transactions="selectedTransactions"
     />
+
+    <PartialProfitDialog
+      v-model:open="calcDialogOpen"
+      :stock="currentStock"
+      :fee-settings="effectiveFeeSettings"
+    />
   </div>
 </template>
 
@@ -254,6 +261,7 @@ import DailyFeesDialog from './dialogs/DailyFeesDialog.vue'
 import ConfirmDialog from './dialogs/ConfirmDialog.vue'
 import ImportDialog from './dialogs/ImportDialog.vue'
 import ProfitCalculatorDialog from './dialogs/ProfitCalculatorDialog.vue'
+import PartialProfitDialog from './dialogs/PartialProfitDialog.vue' 
 import TradingCalendar from '@/components/review/TradingCalendar.vue'
 import TradingStepChart from '@/components/review/TradingStepChart.vue'
 import PositionChart from '@/components/review/PositionChart.vue'
@@ -266,6 +274,7 @@ const calc = useStockCalculator({ stocks, feeSettings, saveData, recalculateAllS
 
 const importDialogVisible = ref(false)
 const dialogOpen = ref(false)
+const calcDialogOpen = ref(false)
 function showSelectProfit() {
   dialogOpen.value = true
 }

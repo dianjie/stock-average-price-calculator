@@ -14,6 +14,13 @@
           计算卖出价
         </Button>
         <Button
+          variant="default"
+          size="sm"
+          @click="$emit('calcPartialProfit')"
+        >
+          计算部分盈亏
+        </Button>
+        <Button
           variant="destructive"
           size="sm"
           :disabled="selectedIds.length === 0"
@@ -127,6 +134,7 @@ const emit = defineEmits<{
   editTransaction: [index: number]
   deleteTransaction: [index: number]
   showSelectProfit: []
+  calcPartialProfit: []
 }>()
 
 const sorting = ref<SortingState>([])

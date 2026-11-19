@@ -156,7 +156,11 @@ const summary = computed(() => {
           <div class="flex justify-between">
             <span class="text-muted-foreground">剩余持仓</span>
             <span class="font-medium">
-              {{ summary.remainingShares > 0 ? `${summary.remainingShares} 股` : '已全部卖出' }}
+              {{
+                summary.remainingShares > 0
+                  ? `${summary.remainingShares} 股`
+                  : `已全部卖出（超卖 ${Math.abs(summary.remainingShares)} 股）`
+              }}
             </span>
           </div>
 
